@@ -8,7 +8,7 @@ import InspectionForm from './pages/InspectionForm';
 import UserManagement from './pages/UserManagement';
 import ManagerDashboard from './pages/ManagerDashboard';
 import LocationManagement from './pages/LocationManagement';
-
+import InitData from './pages/InitData'; // 👈 1. 這裡要新增引入
 
 const EntryPoint = () => {
   const { user, role, loading } = useAuth();
@@ -23,18 +23,14 @@ const EntryPoint = () => {
 
   if (!user) return <Login />;
 
-  // --- 根據你的新代碼進行分流 ---
-  // 1. 如果是主管或管理員，進入管理後台
   if (role === 'supervisor' || role === 'admin') {
     return <Navigate to="/manager" replace />;
   }
 
-  // 2. 如果是巡檢員，進入巡檢列表
   if (role === 'inspector') {
     return <Navigate to="/dashboard" replace />;
   }
 
-  // 3. 如果角色不明，預設去巡檢列表 (防止卡死)
   return <Navigate to="/dashboard" replace />;
 };
 
@@ -45,7 +41,7 @@ function App() {
         <Routes>
           <Route path="/" element={<EntryPoint />} />
           
-          {/* 【巡檢相關】三種角色通常都能看，主管有時也需要巡視 */}
+          {/* 【巡檢相關】 */}
           <Route path="/dashboard" element={
             <ProtectedRoute allowedRoles={['inspector', 'supervisor', 'admin']}>
               <LocationList />
@@ -65,18 +61,21 @@ function App() {
             </ProtectedRoute>
           } />
 
-          {/* 【人員管理】通常限定 admin 或 supervisor */}
+          {/* 【人員管理】 */}
           <Route path="/admin/users" element={
             <ProtectedRoute allowedRoles={['admin', 'supervisor']}>
               <UserManagement />
             </ProtectedRoute>
           } />
-		  
-		  <Route path="/admin/locations" element={
-			<ProtectedRoute allowedRoles={['admin', 'supervisor']}>
-			  <LocationManagement />
-			</ProtectedRoute>
-		  } />
+          
+          <Route path="/admin/locations" element={
+            <ProtectedRoute allowedRoles={['admin', 'supervisor']}>
+              <LocationManagement />
+            </ProtectedRoute>
+          } />
+
+          {/* 👈 2. 資料初始化路徑（建議放在 * 之前） */}
+          <Route path="/init" element={<InitData />} />
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
