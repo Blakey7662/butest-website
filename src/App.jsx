@@ -6,12 +6,12 @@ import Login from './pages/Login';
 import LocationList from './pages/LocationList';
 import InspectionForm from './pages/InspectionForm';
 import UserManagement from './pages/UserManagement';
+import ManagerDashboard from './pages/ManagerDashboard'; // 已匯入
 
-// 建立一個處理「初始入口」的組件
+// 修正後的入口組件：根據角色 (Role) 自動分流
 const EntryPoint = () => {
-  const { user, loading } = useAuth();
+  const { user, role, loading } = useAuth(); // 這裡多拿一個 role
 
-  // 如果還在確認身分，顯示全螢幕深色背景（防止白屏）
   if (loading) {
     return (
       <div className="h-screen bg-[#020617] flex items-center justify-center">
@@ -20,8 +20,14 @@ const EntryPoint = () => {
     );
   }
 
-  // 根據是否有使用者，決定顯示登入頁或首頁
-  return user ? <Navigate to="/dashboard" replace /> : <Login />;
+  // 1. 沒登入：去登入頁
+  if (!user) return <Login />;
+
+  // 2. 有登入：根據角色決定去哪
+  // 如果是主管，去 /manager；如果是員工，去 /dashboard
+  return role === 'manager' 
+    ? <Navigate to="/manager" replace /> 
+    : <Navigate to="/dashboard" replace />;
 };
 
 function App() {
@@ -32,17 +38,31 @@ function App() {
           {/* 根目錄入口 */}
           <Route path="/" element={<EntryPoint />} />
           
-          {/* 受保護的路由 */}
+          {/* 【一般員工】路由 */}
           <Route path="/dashboard" element={
-            <ProtectedRoute><LocationList /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['user', 'manager']}>
+              <LocationList />
+            </ProtectedRoute>
           } />
           
           <Route path="/inspect/:id" element={
-            <ProtectedRoute><InspectionForm /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['user', 'manager']}>
+              <InspectionForm />
+            </ProtectedRoute>
           } />
 
+          {/* 【主管專用】路由 */}
+          <Route path="/manager" element={
+            <ProtectedRoute allowedRoles={['manager']}>
+              <ManagerDashboard />
+            </ProtectedRoute>
+          } />
+
+          {/* 【人員管理】通常也是主管用 */}
           <Route path="/admin/users" element={
-            <ProtectedRoute><UserManagement /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['manager']}>
+              <UserManagement />
+            </ProtectedRoute>
           } />
 
           {/* 萬用導向 */}
