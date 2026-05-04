@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { db } from '../firebase';
-import { collection, query, getDocs, orderBy, limit } from 'firebase/firestore';
+import { collection, query, getDocs, orderBy, limit, deleteDoc, doc } from 'firebase/firestore';
 import { 
   LayoutDashboard, 
   Users, 
@@ -9,7 +9,9 @@ import {
   ClipboardList, 
   AlertCircle,
   ChevronRight,
-  LogOut
+  LogOut,
+  Trash2,
+  ShieldCheck
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -28,104 +30,107 @@ const ManagerDashboard = () => {
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        // 1. 抓取統計數據 (這裡假設你有這些 collection)
-        const locationsSnap = await getDocs(collection(db, "locations"));
-        const reportsSnap = await getDocs(collection(db, "reports"));
-        const usersSnap = await getDocs(collection(db, "users"));
+        const [locs, reps, usrs] = await Promise.all([
+          getDocs(collection(db, "locations")),
+          getDocs(collection(db, "reports")),
+          getDocs(collection(db, "users"))
+        ]);
         
-        // 篩選異常報告 (假設報告中有一個 status 欄位)
-        const abnormal = reportsSnap.docs.filter(doc => doc.data().status === 'abnormal');
+        const abnormal = reps.docs.filter(d => d.data().status === 'abnormal');
 
         setStats({
-          locationCount: locationsSnap.size,
-          reportCount: reportsSnap.size,
+          locationCount: locs.size,
+          reportCount: reps.size,
           abnormalCount: abnormal.length,
-          userCount: usersSnap.size
+          userCount: usrs.size
         });
 
-        // 2. 抓取最近 5 筆巡檢紀錄
         const q = query(collection(db, "reports"), orderBy("timestamp", "desc"), limit(5));
         const recentSnap = await getDocs(q);
         setRecentReports(recentSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-        
       } catch (error) {
-        console.error("抓取儀表板資料失敗:", error);
+        console.error("Fetch error:", error);
       } finally {
         setLoading(false);
       }
     };
-
     fetchDashboardData();
   }, []);
 
   if (loading) {
-    return <div className="p-8 text-center text-slate-500">載入數據中...</div>;
+    return (
+      <div className="h-screen bg-[#020617] flex items-center justify-center text-blue-400 font-medium">
+        正在同步管理數據...
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-12">
-      {/* 頂部導覽列 */}
-      <nav className="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center sticky top-0 z-10">
-        <div className="flex items-center gap-2 font-bold text-xl text-slate-800">
-          <LayoutDashboard className="text-blue-600" />
-          主管後台
+    <div className="min-h-screen bg-[#020617] text-slate-200 pb-12">
+      {/* 頂部導覽列：深色毛玻璃效果 */}
+      <nav className="bg-[#0f172a]/80 backdrop-blur-md border-b border-slate-800 px-6 py-4 flex justify-between items-center sticky top-0 z-10">
+        <div className="flex items-center gap-2 font-bold text-xl text-white">
+          <ShieldCheck className="text-blue-500" />
+          控制台 <span className="text-slate-500 font-light text-sm ml-2">v1.0</span>
         </div>
         <button 
           onClick={logout}
-          className="flex items-center gap-2 text-slate-500 hover:text-red-600 transition"
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-800 hover:bg-red-900/30 hover:text-red-400 transition-all text-slate-400 text-sm"
         >
-          <LogOut size={20} />
-          <span className="hidden sm:inline">登出系統</span>
+          <LogOut size={18} />
+          <span>登出</span>
         </button>
       </nav>
 
       <main className="max-w-7xl mx-auto p-6">
-        {/* 統計數字區 */}
+        {/* 數據卡片區：使用深色漸層 */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <StatCard title="巡檢地點" value={stats.locationCount} icon={<MapPin className="text-blue-600" />} />
-          <StatCard title="累計報告" value={stats.reportCount} icon={<ClipboardList className="text-green-600" />} />
-          <StatCard title="異常件數" value={stats.abnormalCount} icon={<AlertCircle className="text-red-600" />} color="text-red-600" />
-          <StatCard title="工作人員" value={stats.userCount} icon={<Users className="text-purple-600" />} />
+          <StatCard title="巡檢地點" value={stats.locationCount} icon={<MapPin size={20}/>} color="blue" />
+          <StatCard title="累計報告" value={stats.reportCount} icon={<ClipboardList size={20}/>} color="indigo" />
+          <StatCard title="異常件數" value={stats.abnormalCount} icon={<AlertCircle size={20}/>} color="red" isAlert={stats.abnormalCount > 0} />
+          <StatCard title="工作人員" value={stats.userCount} icon={<Users size={20}/>} color="slate" />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* 左側：最近巡檢紀錄 */}
-          <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-200">
-            <div className="p-5 border-b border-slate-100 flex justify-between items-center">
-              <h2 className="font-bold text-slate-800">最新巡檢動態</h2>
-              <button className="text-blue-600 text-sm font-medium hover:underline">查看全部</button>
+          {/* 左側：最新巡檢動態 */}
+          <div className="lg:col-span-2 bg-[#0f172a] rounded-2xl border border-slate-800 overflow-hidden">
+            <div className="p-5 border-b border-slate-800 bg-slate-900/50 flex justify-between items-center">
+              <h2 className="font-bold text-white flex items-center gap-2">
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                即時巡檢動態
+              </h2>
             </div>
-            <div className="divide-y divide-slate-50">
+            <div className="divide-y divide-slate-800">
               {recentReports.length > 0 ? recentReports.map((report) => (
-                <div key={report.id} className="p-4 flex items-center justify-between hover:bg-slate-50 transition">
+                <div key={report.id} className="p-4 flex items-center justify-between hover:bg-slate-800/50 transition">
                   <div className="flex flex-col">
-                    <span className="font-semibold text-slate-700">{report.locationName}</span>
-                    <span className="text-xs text-slate-400">{report.inspectorName} · {new Date(report.timestamp?.seconds * 1000).toLocaleString()}</span>
+                    <span className="font-medium text-slate-200">{report.locationName}</span>
+                    <span className="text-xs text-slate-500">{report.inspectorName} · {new Date(report.timestamp?.seconds * 1000).toLocaleString()}</span>
                   </div>
-                  <div className={`px-3 py-1 rounded-full text-xs font-bold ${report.status === 'normal' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+                  <div className={`px-3 py-1 rounded-full text-xs font-bold ${report.status === 'normal' ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
                     {report.status === 'normal' ? '正常' : '異常'}
                   </div>
                 </div>
               )) : (
-                <div className="p-10 text-center text-slate-400">尚無巡檢紀錄</div>
+                <div className="p-20 text-center text-slate-600 italic">目前尚無巡檢資料</div>
               )}
             </div>
           </div>
 
-          {/* 右側：快速操作 */}
+          {/* 右側：快速管理與帳號刪除 */}
           <div className="space-y-4">
-            <h2 className="font-bold text-slate-800 px-2">快速管理</h2>
+            <h2 className="font-bold text-slate-400 px-2 text-sm uppercase tracking-wider">系統管理</h2>
             <ActionButton 
               title="人員帳號管理" 
-              subtitle="修改權限、重設密碼" 
+              subtitle="權限審核與帳號刪除" 
               onClick={() => navigate('/admin/users')}
-              icon={<Users className="text-slate-600" />}
+              icon={<Users className="text-blue-400" />}
             />
             <ActionButton 
-              title="巡檢地點設定" 
-              subtitle="新增或編輯掃描點" 
+              title="巡檢點設定" 
+              subtitle="新增、編輯 QR Code" 
               onClick={() => navigate('/dashboard')}
-              icon={<MapPin className="text-slate-600" />}
+              icon={<MapPin className="text-slate-400" />}
             />
           </div>
         </div>
@@ -134,29 +139,38 @@ const ManagerDashboard = () => {
   );
 };
 
-// 子組件：統計卡片
-const StatCard = ({ title, value, icon, color = "text-slate-800" }) => (
-  <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-    <div className="flex items-center justify-between mb-2">
-      <div className="p-2 bg-slate-50 rounded-lg">{icon}</div>
+// 子組件：深色統計卡片
+const StatCard = ({ title, value, icon, color, isAlert }) => {
+  const colors = {
+    blue: "border-blue-500/20 text-blue-400",
+    indigo: "border-indigo-500/20 text-indigo-400",
+    red: "border-red-500/20 text-red-400",
+    slate: "border-slate-500/20 text-slate-400"
+  };
+  
+  return (
+    <div className={`bg-[#0f172a] p-5 rounded-2xl border ${colors[color]} shadow-lg relative overflow-hidden group`}>
+      <div className={`absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity`}>
+        {icon}
+      </div>
+      <p className="text-slate-500 text-xs font-semibold mb-1 uppercase tracking-tight">{title}</p>
+      <p className={`text-3xl font-black ${isAlert ? 'text-red-500 animate-pulse' : 'text-white'}`}>{value}</p>
     </div>
-    <p className="text-slate-500 text-sm font-medium">{title}</p>
-    <p className={`text-2xl font-bold ${color}`}>{value}</p>
-  </div>
-);
+  );
+};
 
-// 子組件：操作按鈕
+// 子組件：深色操作按鈕
 const ActionButton = ({ title, subtitle, onClick, icon }) => (
   <button 
     onClick={onClick}
-    className="w-full bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4 hover:border-blue-300 hover:bg-blue-50 transition text-left group"
+    className="w-full bg-[#0f172a] p-4 rounded-2xl border border-slate-800 flex items-center gap-4 hover:border-blue-500/50 hover:bg-slate-800 transition-all text-left group"
   >
-    <div className="p-3 bg-slate-100 rounded-xl group-hover:bg-white transition">{icon}</div>
+    <div className="p-3 bg-slate-800 rounded-xl group-hover:bg-blue-500/10 transition-colors">{icon}</div>
     <div className="flex-1">
-      <p className="font-bold text-slate-800">{title}</p>
-      <p className="text-xs text-slate-500">{subtitle}</p>
+      <p className="font-bold text-slate-200 text-sm">{title}</p>
+      <p className="text-[10px] text-slate-500 uppercase mt-0.5">{subtitle}</p>
     </div>
-    <ChevronRight className="text-slate-300 group-hover:text-blue-500" size={18} />
+    <ChevronRight className="text-slate-600 group-hover:text-blue-400" size={16} />
   </button>
 );
 
