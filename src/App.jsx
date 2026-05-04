@@ -8,7 +8,7 @@ import InspectionForm from './pages/InspectionForm';
 import UserManagement from './pages/UserManagement';
 import ManagerDashboard from './pages/ManagerDashboard';
 import LocationManagement from './pages/LocationManagement';
-import InitData from './pages/InitData'; // 👈 1. 這裡要新增引入
+
 
 const EntryPoint = () => {
   const { user, role, loading } = useAuth();
@@ -73,9 +73,6 @@ function App() {
               <LocationManagement />
             </ProtectedRoute>
           } />
-
-          {/* 👈 2. 資料初始化路徑（建議放在 * 之前） */}
-          <Route path="/init" element={<InitData />} />
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
