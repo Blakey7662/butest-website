@@ -6,11 +6,11 @@ import Login from './pages/Login';
 import LocationList from './pages/LocationList';
 import InspectionForm from './pages/InspectionForm';
 import UserManagement from './pages/UserManagement';
-import ManagerDashboard from './pages/ManagerDashboard'; // 已匯入
+import ManagerDashboard from './pages/ManagerDashboard';
 
-// 修正後的入口組件：根據角色 (Role) 自動分流
+// 修正後的入口組件：加入 supervisor 分流邏輯
 const EntryPoint = () => {
-  const { user, role, loading } = useAuth(); // 這裡多拿一個 role
+  const { user, role, loading } = useAuth();
 
   if (loading) {
     return (
@@ -20,14 +20,15 @@ const EntryPoint = () => {
     );
   }
 
-  // 1. 沒登入：去登入頁
   if (!user) return <Login />;
 
-  // 2. 有登入：根據角色決定去哪
-  // 如果是主管，去 /manager；如果是員工，去 /dashboard
-  return role === 'manager' 
-    ? <Navigate to="/manager" replace /> 
-    : <Navigate to="/dashboard" replace />;
+  // ✅ 如果是主管或督導，都導向管理後台
+  if (role === 'manager' || role === 'supervisor') {
+    return <Navigate to="/manager" replace />;
+  }
+
+  // 一般員工導向巡檢列表
+  return <Navigate to="/dashboard" replace />;
 };
 
 function App() {
@@ -35,37 +36,35 @@ function App() {
     <AuthProvider>
       <Router>
         <Routes>
-          {/* 根目錄入口 */}
           <Route path="/" element={<EntryPoint />} />
           
-          {/* 【一般員工】路由 */}
+          {/* ✅ 允許 supervisor 進入一般巡檢頁面 */}
           <Route path="/dashboard" element={
-            <ProtectedRoute allowedRoles={['user', 'manager']}>
+            <ProtectedRoute allowedRoles={['user', 'manager', 'supervisor']}>
               <LocationList />
             </ProtectedRoute>
           } />
           
           <Route path="/inspect/:id" element={
-            <ProtectedRoute allowedRoles={['user', 'manager']}>
+            <ProtectedRoute allowedRoles={['user', 'manager', 'supervisor']}>
               <InspectionForm />
             </ProtectedRoute>
           } />
 
-          {/* 【主管專用】路由 */}
+          {/* ✅ 允許 supervisor 進入主管後台 */}
           <Route path="/manager" element={
-            <ProtectedRoute allowedRoles={['manager']}>
+            <ProtectedRoute allowedRoles={['manager', 'supervisor']}>
               <ManagerDashboard />
             </ProtectedRoute>
           } />
 
-          {/* 【人員管理】通常也是主管用 */}
+          {/* ✅ 允許 supervisor 進行人員管理 */}
           <Route path="/admin/users" element={
-            <ProtectedRoute allowedRoles={['manager']}>
+            <ProtectedRoute allowedRoles={['manager', 'supervisor']}>
               <UserManagement />
             </ProtectedRoute>
           } />
 
-          {/* 萬用導向 */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>
