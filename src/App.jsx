@@ -8,7 +8,6 @@ import InspectionForm from './pages/InspectionForm';
 import UserManagement from './pages/UserManagement';
 import ManagerDashboard from './pages/ManagerDashboard';
 
-// 修正後的入口組件：加入 supervisor 分流邏輯
 const EntryPoint = () => {
   const { user, role, loading } = useAuth();
 
@@ -22,12 +21,18 @@ const EntryPoint = () => {
 
   if (!user) return <Login />;
 
-  // ✅ 如果是主管或督導，都導向管理後台
-  if (role === 'manager' || role === 'supervisor') {
+  // --- 根據你的新代碼進行分流 ---
+  // 1. 如果是主管或管理員，進入管理後台
+  if (role === 'supervisor' || role === 'admin') {
     return <Navigate to="/manager" replace />;
   }
 
-  // 一般員工導向巡檢列表
+  // 2. 如果是巡檢員，進入巡檢列表
+  if (role === 'inspector') {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  // 3. 如果角色不明，預設去巡檢列表 (防止卡死)
   return <Navigate to="/dashboard" replace />;
 };
 
@@ -38,29 +43,29 @@ function App() {
         <Routes>
           <Route path="/" element={<EntryPoint />} />
           
-          {/* ✅ 允許 supervisor 進入一般巡檢頁面 */}
+          {/* 【巡檢相關】三種角色通常都能看，主管有時也需要巡視 */}
           <Route path="/dashboard" element={
-            <ProtectedRoute allowedRoles={['user', 'manager', 'supervisor']}>
+            <ProtectedRoute allowedRoles={['inspector', 'supervisor', 'admin']}>
               <LocationList />
             </ProtectedRoute>
           } />
           
           <Route path="/inspect/:id" element={
-            <ProtectedRoute allowedRoles={['user', 'manager', 'supervisor']}>
+            <ProtectedRoute allowedRoles={['inspector', 'supervisor', 'admin']}>
               <InspectionForm />
             </ProtectedRoute>
           } />
 
-          {/* ✅ 允許 supervisor 進入主管後台 */}
+          {/* 【主管/管理員專用】 */}
           <Route path="/manager" element={
-            <ProtectedRoute allowedRoles={['manager', 'supervisor']}>
+            <ProtectedRoute allowedRoles={['supervisor', 'admin']}>
               <ManagerDashboard />
             </ProtectedRoute>
           } />
 
-          {/* ✅ 允許 supervisor 進行人員管理 */}
+          {/* 【人員管理】通常限定 admin 或 supervisor */}
           <Route path="/admin/users" element={
-            <ProtectedRoute allowedRoles={['manager', 'supervisor']}>
+            <ProtectedRoute allowedRoles={['admin', 'supervisor']}>
               <UserManagement />
             </ProtectedRoute>
           } />
