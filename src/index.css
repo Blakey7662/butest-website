@@ -1,8 +1,6 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-/* 底下保留你之前的自定義樣式 */
+
 body {
   @apply bg-gray-50 text-slate-900;
   -webkit-tap-highlight-color: transparent;
