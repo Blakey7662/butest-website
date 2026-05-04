@@ -8,10 +8,12 @@ import InspectionForm from './pages/InspectionForm';
 import UserManagement from './pages/UserManagement';
 import ManagerDashboard from './pages/ManagerDashboard';
 import LocationManagement from './pages/LocationManagement';
+import Home from './pages/Home';
+import AnomalyTracker from './pages/AnomalyTracker';
 
-
+// 修正後的入口組件：登入後統一導向首頁 (Home)
 const EntryPoint = () => {
-  const { user, role, loading } = useAuth();
+  const { user, loading } = useAuth();
 
   if (loading) {
     return (
@@ -21,17 +23,11 @@ const EntryPoint = () => {
     );
   }
 
+  // 1. 沒登入：去登入頁
   if (!user) return <Login />;
 
-  if (role === 'supervisor' || role === 'admin') {
-    return <Navigate to="/manager" replace />;
-  }
-
-  if (role === 'inspector') {
-    return <Navigate to="/dashboard" replace />;
-  }
-
-  return <Navigate to="/dashboard" replace />;
+  // 2. 已登入：統一去首頁 (Home 會根據角色顯示對應的功能按鈕)
+  return <Navigate to="/home" replace />;
 };
 
 function App() {
@@ -39,41 +35,59 @@ function App() {
     <AuthProvider>
       <Router>
         <Routes>
+          {/* 根目錄入口 */}
           <Route path="/" element={<EntryPoint />} />
           
-          {/* 【巡檢相關】 */}
+          {/* 【首頁】顯示進度、巡檢、異常追蹤按鈕 */}
+          <Route path="/home" element={
+            <ProtectedRoute allowedRoles={['inspector', 'supervisor', 'admin']}>
+              <Home />
+            </ProtectedRoute>
+          } />
+
+          {/* 【開始巡檢】16 個巡檢點清單 */}
           <Route path="/dashboard" element={
             <ProtectedRoute allowedRoles={['inspector', 'supervisor', 'admin']}>
               <LocationList />
             </ProtectedRoute>
           } />
           
+          {/* 【巡檢執行】點入巡檢點後的點檢項目表單 */}
           <Route path="/inspect/:id" element={
             <ProtectedRoute allowedRoles={['inspector', 'supervisor', 'admin']}>
               <InspectionForm />
             </ProtectedRoute>
           } />
 
-          {/* 【主管/管理員專用】 */}
+          {/* 【異常追蹤】顯示異常/待注意清單，提供主管複核 */}
+          <Route path="/anomaly-tracker" element={
+            <ProtectedRoute allowedRoles={['inspector', 'supervisor', 'admin']}>
+              <AnomalyTracker />
+            </ProtectedRoute>
+          } />
+
+          {/* 【主管儀表板】統計圖表、完成率分析 */}
           <Route path="/manager" element={
             <ProtectedRoute allowedRoles={['supervisor', 'admin']}>
               <ManagerDashboard />
             </ProtectedRoute>
           } />
 
-          {/* 【人員管理】 */}
+          {/* 【人員管理】管理帳號與權限 (管理員/主管專用) */}
           <Route path="/admin/users" element={
             <ProtectedRoute allowedRoles={['admin', 'supervisor']}>
               <UserManagement />
             </ProtectedRoute>
           } />
           
+          {/* 【巡檢點管理】新增、修改、停用巡檢點與項目 (管理員/主管專用) */}
           <Route path="/admin/locations" element={
             <ProtectedRoute allowedRoles={['admin', 'supervisor']}>
               <LocationManagement />
             </ProtectedRoute>
           } />
 
+          {/* 萬用導向 */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>
