@@ -1,3 +1,7 @@
 cd community-inspection
 
+git add .
+git commit -m "修復 App 找不到的問題"
+git push origin main
+
 npm run dev
