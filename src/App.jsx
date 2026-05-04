@@ -7,6 +7,8 @@ import LocationList from './pages/LocationList';
 import InspectionForm from './pages/InspectionForm';
 import UserManagement from './pages/UserManagement';
 import ManagerDashboard from './pages/ManagerDashboard';
+import LocationManagement from './pages/LocationManagement';
+
 
 const EntryPoint = () => {
   const { user, role, loading } = useAuth();
@@ -69,6 +71,12 @@ function App() {
               <UserManagement />
             </ProtectedRoute>
           } />
+		  
+		  <Route path="/admin/locations" element={
+			<ProtectedRoute allowedRoles={['admin', 'supervisor']}>
+			  <LocationManagement />
+			</ProtectedRoute>
+		  } />
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
