@@ -10,6 +10,7 @@ import ManagerDashboard from './pages/ManagerDashboard';
 import LocationManagement from './pages/LocationManagement';
 import Home from './pages/Home';
 import AnomalyTracker from './pages/AnomalyTracker';
+//import InitData from './pages/InitData';
 
 // 修正後的入口組件：登入後統一導向首頁 (Home)
 const EntryPoint = () => {
@@ -86,6 +87,8 @@ function App() {
               <LocationManagement />
             </ProtectedRoute>
           } />
+
+			//<Route path="/init" element={<InitData />} />
 
           {/* 萬用導向 */}
           <Route path="*" element={<Navigate to="/" replace />} />
